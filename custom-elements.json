@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "tags": [
+    {
+      "name": "open-data-table",
+      "description": "A Material Design data table web component.",
+      "properties": [],
+      "events": [],
+      "slots": [],
+      "cssProperties": []
+    }
+  ]
+}

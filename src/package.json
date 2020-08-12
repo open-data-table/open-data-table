@@ -1,0 +1,20 @@
+{
+  "name": "open-data-table",
+  "version": "0.0.1",
+  "description": "A Material Design data table web component.",
+  "author": "Paul H mason",
+  "license": "MIT",
+  "main": "open-data-table.js",
+  "module": "open-data-table.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-data-table/open-data-table.git"
+  },
+  "dependencies": {
+    "lit-html": "^1.1.2",
+    "lit-element": "^2.2.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
