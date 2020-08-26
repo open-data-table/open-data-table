@@ -10,7 +10,6 @@ export class OpenDataTableDefaultVisualizer extends OpenDataTableVisualizerContr
         return [css`
             :host {
                 display: block;
-                overflow: hidden;
             }
     
             :host([hidden]) {
@@ -42,6 +41,8 @@ export class OpenDataTableDefaultVisualizer extends OpenDataTableVisualizerContr
                 flex: 1;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+                width: 100%;
+                overflow: hidden;
             }
 
             .label[type="number"] {

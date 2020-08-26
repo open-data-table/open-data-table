@@ -21,6 +21,10 @@ export const OpenDataTableController = (superClass) =>
                     type: Array
                 },
 
+                expandedRows: {
+                    type: Array
+                },
+
                 idField: {
                     type: String,
                     attribute: 'id-field'
@@ -42,18 +46,6 @@ export const OpenDataTableController = (superClass) =>
                     attribute: 'sort-descending'
                 },
 
-                fixedColumnsLeft: {
-                    type: Array
-                },
-
-                fixedColumnsRight: {
-                    type: Array
-                },
-
-                scrollColumns: {
-                    type: Array
-                },
-
                 columnActions: {
                     type: Array
                 },
@@ -70,8 +62,54 @@ export const OpenDataTableController = (superClass) =>
                 rowActionsIcon: {
                     type: String,
                     attribute: 'row-actions-icon'
+                },
+
+                detailTemplate: {
+                    type: Object
+                },
+
+                hasDetailTemplate: {
+                    type: Boolean
+                },
+
+                displayColumns: {
+                    type: Array
+                },
+
+                sortColumns: {
+                    type: Array
+                },
+
+                headerDepth: {
+                    type: Number
+                },
+
+                // auto (default), fixed, resizable
+                columnSizing: {
+                    type: String,
+                    attribute: 'column-sizing'
+                },
+
+                _columnDragging: {
+                    type: Boolean
                 }
             }
+        }
+
+        get headerDepth() {
+            return this._headerDepth;
+        }
+
+        set headerDepth(value) {
+            throw 'headerDepth is read only';
+        }
+
+        get displayColumns() {
+            return this._displayColumns;
+        }
+
+        set displayColumns(value) {
+            throw 'displayColumns is read only';
         }
 
         get columns() {
@@ -88,53 +126,40 @@ export const OpenDataTableController = (superClass) =>
                     column._internalIndex = index;
                 });
 
-                const oldFixedColumnsLeft = this.fixedColumnsLeft;
-                const oldFixedColumnsRight = this.fixedColumnsRight;
-                const oldScrollColumns = this.scrollColumns;
-
-                this._fixedColumnsLeft = this._columns.filter((column) => column.fix === 'left');
-                this._fixedColumnsRight = this._columns.filter((column) => column.fix === 'right');
-                this._scrollColumns = this._columns.filter((column) => ((column.fix !== 'left') && (column.fix !== 'right')));
-
+                this.updateDisplayColumns();
                 this.requestUpdate('columns', oldValue);
-                this.requestUpdate('fixedColumnsLeft', oldFixedColumnsLeft);
-                this.requestUpdate('fixedColumnsRight', oldFixedColumnsRight);
-                this.requestUpdate('scrollColumns', oldScrollColumns);
             }
         }
 
-        get fixedColumnsLeft() {
-            return this._fixedColumnsLeft;
+        get hasDetailTemplate() {
+            return this._hasDetailTemplate;
         }
 
-        set fixedColumnsLeft(value) {
-            throw 'fixedColumnsLeft is read only';
+        set hasDetailTemplate(value) {
+            throw 'hasDetailTemplate is read only';
         }
 
-        get fixedColumnsRight() {
-            return this._fixedColumnsRight;
+        get detailTemplate() {
+            return this._detailTemplate;
         }
 
-        set fixedColumnsRight(value) {
-            throw 'fixedColumnsRight is read only';
-        }
-
-        get scrollColumns() {
-            return this._scrollColumns;
-        }
-
-        set scrollColumns(value) {
-            throw 'scrollColumns is read only';
+        set detailTemplate(value) {
+            if (this._isFunction(value)) {
+                const oldValue = this._detailTemplate;
+                this._detailTemplate = value;
+                this._hasDetailTemplate = true;
+                this.requestUpdate('detailTemplate', oldValue);
+                this.requestUpdate('hasDetailTemplate', null);
+            }
         }
 
         constructor() {
             super();
             this._columns = [];
-            this._fixedColumnsLeft = [];
-            this._fixedColumnsRight = [];
-            this._scrollColumns = [];
+            this.sortColumns = [];
             this.rows = [];
             this.selectedRows = [];
+            this.expandedRows = [];
             this.selectionMode = 'none';
             this.idField = 'id';
             this.sortIndex = -1;
@@ -143,12 +168,83 @@ export const OpenDataTableController = (superClass) =>
             this.rowActions = [];
             this.columnActionsIcon = '';
             this.rowActionsIcon = '';
+            this._detailTemplate = null;
+            this._hasDetailTemplate = false;
+            this._headerDepth = 0;
+            this.columnSizing = 'auto';
+            this._columnDragging = false;
+
+            this.columnResizeInfo = {
+                offset: undefined,
+                currentColumn: undefined,
+                currentColumnWidth: undefined,
+                currentGridColumn: undefined,
+                resizer: undefined,
+                resizerSibling: undefined
+            }
+
+            this._boundHandleColumnResizeStart = this._handleColumnResizeStart.bind(this);
+            this._boundHandleColumnResizeStep = this._handleColumnResizeStep.bind(this);
+            this._boundHandleColumnResizeEnd = this._handleColumnResizeEnd.bind(this);
+
+            document.addEventListener('mousemove', this._boundHandleColumnResizeStep);
+            document.addEventListener('mouseup', this._boundHandleColumnResizeEnd);
+
+            document.addEventListener('touchmove', this._boundHandleColumnResizeStep);
+            document.addEventListener('touchend', this._boundHandleColumnResizeEnd);
+
+            this.updateDisplayColumns();
+        }
+
+        _handleColumnResizeStart(e) {
+            this.columnResizeInfo.resizer = e.target;
+            this.columnResizeInfo.resizerSibling = e.target.nextElementSibling;
+            this.columnResizeInfo.offset = (e.type === 'touchstart') ? e.changedTouches[0].pageX : e.pageX;
+
+            this.columnResizeInfo.currentColumn = e.target.parentElement;
+            this.columnResizeInfo.currentColumnWidth = this.columnResizeInfo.currentColumn.getBoundingClientRect().width;
+            this.columnResizeInfo.currentGridColumn = this.sortColumns[this.columnResizeInfo.currentColumn.columnIndex];
+
+            this.columnResizeInfo.resizer.setAttribute('dragging', '');
+            this.columnResizeInfo.resizerSibling.setAttribute('dragging', '');
+            this._columnDragging = true;
+        }
+
+        _handleColumnResizeStep(e) { 
+            if (this.columnResizeInfo.currentGridColumn) {
+                const px = (e.type === 'touchmove') ? e.changedTouches[0].pageX : e.pageX;
+                const dx = px - this.columnResizeInfo.offset;
+   
+                this.columnResizeInfo.offset = px;
+                this.columnResizeInfo.currentColumnWidth = (this.columnResizeInfo.currentColumnWidth + dx);
+                this.columnResizeInfo.currentGridColumn.width = Math.max(this.columnResizeInfo.currentColumnWidth, 3) + 'px';
+
+                this.requestUpdate('columns', []);
+            }
+        }
+
+        _handleColumnResizeEnd(e) {
+            this._columnDragging = false;
+            
+            if (this.columnResizeInfo && this.columnResizeInfo.resizer) {
+                this.columnResizeInfo.resizer.removeAttribute('dragging');
+                this.columnResizeInfo.resizerSibling.removeAttribute('dragging');
+            }
+
+            this.columnResizeInfo = {
+                offset: undefined,
+                currentColumn: undefined,
+                currentColumnWidth: undefined,
+                currentGridColumn: undefined,
+                resizer: undefined,
+                resizerSibling: undefined
+            }
         }
 
         get sortedRows() {
             if (this.sortIndex > -1) {
-                this._sortField = this.columns[this.sortIndex].field;
-                this._sortType = this.columns[this.sortIndex].type;
+                this._sortField = this.sortColumns[this.sortIndex].field;
+                this._sortType = this.sortColumns[this.sortIndex].type;
 
                 switch (this._sortType) {
                     case 'number': {
@@ -174,13 +270,166 @@ export const OpenDataTableController = (superClass) =>
             return this.selectionMode === 'multiple' ? this.selectedRows : (this.selectedRows.length > 0) ? [this.selectedRows[0]] : [];
         }
 
+        updateDisplayColumns() {
+            if ((!this.columns) || (this.columns.length === 0)) {
+                return;
+            }
+
+            let effectiveColumns = this.columns;
+
+            this._headerDepth = this._getHeaderDepth(effectiveColumns, 0);
+            effectiveColumns = this._shiftColumns(effectiveColumns, 1, this._headerDepth);
+            this._calculateHeaderSpans(effectiveColumns);
+
+            const columns = {
+                fixedLeft: [],
+                fixedRight: [],
+                scroll: []
+            }
+
+            columns.fixedLeft = this._expandDisplayColumns(effectiveColumns.filter((column) => column.fix === 'left'));
+            columns.fixedRight = this._expandDisplayColumns(effectiveColumns.filter((column) => column.fix === 'right'));
+            columns.scroll = this._expandDisplayColumns(effectiveColumns.filter((column) => ((column.fix !== 'left') && (column.fix !== 'right'))));
+
+            const oldValue = this.displayColumns;
+            this._displayColumns = columns;
+
+            let flatColumns = [];
+
+            if (columns.fixedLeft.length > 0) {
+                flatColumns = flatColumns.concat(columns.fixedLeft[this._headerDepth - 1]);
+            }
+
+            if (columns.scroll.length > 0) {
+                flatColumns = flatColumns.concat(columns.scroll[this._headerDepth - 1]);
+            }
+
+            if (columns.fixedRight.length > 0) {
+                flatColumns = flatColumns.concat(columns.fixedRight[this._headerDepth - 1]);
+            }
+
+            flatColumns.forEach((column, index) => column._internalIndex = index);
+
+            this.sortColumns = flatColumns;
+            //console.log(this.sortColumns)
+            this.requestUpdate('displayColumns', oldValue);
+        }
+
+        _shiftColumns(columns, currentDepth, depth) {
+            if ((columns) && (columns.length > 0) && (currentDepth < depth)) {
+                currentDepth++
+
+                columns = columns.map((column, index) => {
+                    if (!column.columns || column.columns.length === 0) {
+                        return { label: '', columns: [column] }
+                    }
+
+                    return column;
+                });
+
+                columns.forEach((column) => {
+                    column.columns = this._shiftColumns(column.columns, currentDepth, depth);
+                });
+            }
+
+            const leaves = columns.filter((column) => !column.columns || column.columns.length === 0);
+
+            if (leaves.length > 0) {
+                leaves[leaves.length - 1]._lastInGroup = true;
+            }
+
+            return columns;
+        }
+
+        _getHeaderDepth(columns, currentDepth) {
+            if ((columns) && (columns.length > 0)) {
+                currentDepth++;
+                return Math.max(...columns.map((column) => this._getHeaderDepth(column.columns, currentDepth)));
+            }
+
+            return currentDepth;
+        }
+
+
+        _expandDisplayColumns(columns) {
+            if (!columns || columns.length === 0) return [];
+            let childColumns = [];
+
+            columns.forEach((column) => {
+                if (column.columns && column.columns.length > 0) {
+                    childColumns = childColumns.concat(column.columns);
+                }
+            });
+
+            if (childColumns.length > 0) {
+                return [columns, ...this._expandDisplayColumns(childColumns)];
+            }
+
+            return [columns];
+        }
+
+        _calculateHeaderSpans(columns) {
+            if ((columns) && (columns.length > 0)) {
+                columns.forEach((column) => {
+                    if ((column.columns) && (column.columns.length > 0)) {
+                        this._calculateHeaderSpans(column.columns);
+                        column.childCount = column.columns.reduce((count, childColumn) => count + childColumn.childCount, 0);
+                    } else {
+                        column.childCount = 1;
+                    }
+                });
+            }
+        }
+
         sortColumn(columnIndex) {
-            if ((columnIndex > -1) && (columnIndex < this.columns.length)) {
+            if ((columnIndex > -1) && (columnIndex < this.sortColumns.length)) {
                 if (columnIndex === this.sortIndex) {
                     this.sortDescending = !this.sortDescending;
                 } else {
                     this.sortIndex = columnIndex;
                     this.sortDescending = false;
+                }
+            }
+        }
+
+        rowExpanded(row) {
+            return this.expandedRows.indexOf(row) > -1;
+        }
+
+        toggleRow(row) {
+            if (row) {
+                const existingIndex = this.expandedRows.indexOf(row);
+
+                if (existingIndex !== -1) {
+                    this.expandedRows.splice(existingIndex, 1);
+                    //this.fireMessage('open-data-table-selection-changed');
+                } else {
+                    this.expandedRows.push(row);
+                    //this.fireMessage('open-data-table-selection-changed');
+                }
+
+                this.requestUpdate();
+            }
+        }
+
+        expandRow(index) {
+            const row = this.rows[index];
+
+            if ((row) && (this.expandedRows.indexOf(row) === -1)) {
+                this.expandedRows.push(row);
+                //this.fireMessage('open-data-table-selection-changed');
+            }
+        }
+
+        collapseRow(index) {
+            const row = this.rows[index];
+
+            if (row) {
+                const existingIndex = this.expandedRows.indexOf(row);
+
+                if (existingIndex !== -1) {
+                    this.expandedRows.splice(existingIndex, 1);
+                    //this.fireMessage('open-data-table-selection-changed');
                 }
             }
         }
@@ -289,7 +538,11 @@ export const OpenDataTableController = (superClass) =>
                 cancelable: cancelable,
                 detail: detail
             });
-    
+
             return this.dispatchEvent(event);
         }
+
+        _isFunction(obj) {
+            return !!(obj && obj.constructor && obj.call && obj.apply);
+        };
     };

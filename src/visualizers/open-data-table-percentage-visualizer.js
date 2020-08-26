@@ -13,6 +13,7 @@ export class OpenDataTablePercentageVisualizer extends OpenDataTableVisualizerCo
                 --percentage-visualizer-unselected-color:  #FFFFFF;
                 display: block;
                 overflow: hidden;
+                width: 100%;
             }
     
             :host([hidden]) {

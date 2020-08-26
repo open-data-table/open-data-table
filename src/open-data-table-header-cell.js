@@ -1,16 +1,16 @@
 /*
 @license
 Copyright (c) 2020 Paul H Mason. All rights reserved.
-*/ 
+*/
 import { html, css, LitElement } from 'lit-element';
 
 export class OpenDataTableHeaderCell extends LitElement {
     static get styles() {
         return [css`
             :host {
-                display: block;
-                font-weight: 500;
-                padding: 0 20px;
+                display: flex;
+                position: relative;
+                font-weight: 500;  
                 user-select: none;
             }
     
@@ -32,6 +32,8 @@ export class OpenDataTableHeaderCell extends LitElement {
             }
 
             .container {
+                width: 100%;
+                flex: 1;
                 position: relative;
                 display: flex;
                 flex-direction: row;
@@ -44,7 +46,7 @@ export class OpenDataTableHeaderCell extends LitElement {
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
-                left: -16px;
+                left: 4px;
                 top: calc(50% - 1px);
                 transform: translate(0, -50%);
                 opacity: 0;
@@ -54,7 +56,7 @@ export class OpenDataTableHeaderCell extends LitElement {
                 opacity: 1;
             }
 
-            .container:hover > .sort-icon:not([sorted]) {
+            :host(:hover:not([no-hover])) > .sort-icon:not([sorted]) {
                 opacity: 0.5;
             }
 
@@ -63,6 +65,9 @@ export class OpenDataTableHeaderCell extends LitElement {
                 text-overflow: ellipsis;
                 white-space: nowrap;
                 text-align: left;
+                width: 100%;
+                margin: 0 20px;
+                overflow: hidden;
             }
 
             .label[column-type="number"], .label[column-type="right"] {
@@ -94,6 +99,12 @@ export class OpenDataTableHeaderCell extends LitElement {
             sortDescending: {
                 type: Boolean,
                 attribute: 'sort-descending'
+            },
+
+            noHover: {
+                type: Boolean,
+                attribute: 'no-hover',
+                reflect: true
             }
         }
     }
@@ -124,13 +135,14 @@ export class OpenDataTableHeaderCell extends LitElement {
         this.columnIndex = -1;
         this.sorted = false;
         this.sortDescending = false;
+        this.noHover = false;
     }
 
     render() {
         return html`
-            <div class="container">
-                ${this._renderSortIcon()}
-                <div class="label" column-type="${(this.column.visualizer && this.column.visualizer.params && this.column.visualizer.params.headerAlign) ? this.column.visualizer.params.headerAlign : this.column.type}">${this.column.label}</div>
+            ${this._renderSortIcon()}
+            <div class="container">    
+                <div class="label" column-type="${(this.column.visualizer && this.column.visualizer.params && this.column.visualizer.params.headerAlign) ? this.column.visualizer.params.headerAlign : this.column.type}">${this.column.label}</div>   
             </div>
         `;
     }
@@ -142,13 +154,24 @@ export class OpenDataTableHeaderCell extends LitElement {
             </div>
         ` : null;
     }
- 
+
     _renderUpArrow() {
         return html`<svg class="arrow-icon" viewBox="0 0 24 24"><g><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"></path></g></svg>`;
     }
 
     _renderDownArrow() {
         return html`<svg class="arrow-icon" viewBox="0 0 24 24"><g><path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path></g></svg>`;
+    }
+
+    fireMessage(name, detail, cancelable) {
+        const event = new CustomEvent(name, {
+            bubbles: true,
+            composed: true,
+            cancelable: cancelable,
+            detail: detail
+        });
+
+        return this.dispatchEvent(event);
     }
 }
 

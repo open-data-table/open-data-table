@@ -11,7 +11,7 @@ export class OpenDataTableBodyCell extends LitElement {
             :host {
                 display: block;
                 font-weight: 400;
-                padding: 0 20px;
+                
             }
     
             :host([hidden]) {
@@ -32,6 +32,8 @@ export class OpenDataTableBodyCell extends LitElement {
             .visualizer {
                 height: 100%;
                 width: 100%;
+                margin: 0 20px;
+                overflow: hidden;
             }
         `];
     }

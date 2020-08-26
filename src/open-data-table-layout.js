@@ -202,7 +202,6 @@ export class OpenDataTableLayout extends LitElement {
                 overflow: hidden;
                 box-sizing: border-box;
                 outline: 0;
-         
             }
 
             .grouper {
@@ -375,7 +374,6 @@ export class OpenDataTableLayout extends LitElement {
             .empty {
                 border: none;
             }
-            
         `];
     }
 
@@ -433,6 +431,11 @@ export class OpenDataTableLayout extends LitElement {
         `;
     }
 
+    updateLayout() {
+        this._resetVerticalScrollElements();
+        this._positionScrollAreas();
+    }
+
     _handleSlotChangeEvent(e) {
         if (this._slotLayoutComplete) return;
         this._slotLayoutComplete = true;
@@ -487,6 +490,18 @@ export class OpenDataTableLayout extends LitElement {
         return style.scrollbarWidth; // This basically identifies Firefox.
     }
 
+    _resetVerticalScrollElements() {
+        this._vElements = [...this.renderRoot.querySelectorAll('div[v-scroll]')];
+
+        this._vElements.forEach((el, index) => {
+            let div = el.querySelector('div.scroll-spacer');
+
+            if (div) {
+                el.removeChild(div);
+            }
+        });
+    }
+
     _positionScrollAreas() {
         // Vertical scrollbar on right body-xxx.
         this._vElements = [...this.renderRoot.querySelectorAll('div[v-scroll]')];
@@ -517,7 +532,7 @@ export class OpenDataTableLayout extends LitElement {
         });
 
         // Horizontal scrollbar on bottom xxx-scroll.
-        this._hElements = [...this.renderRoot.querySelectorAll('div[h-scroll]')];
+        this._hElements = [...this.renderRoot.querySelectorAll('div[h-scroll]')].filter((el) => !el.classList.contains('empty'));
         const lastHIndex = this._hElements.length - 1;
         const maxWidth = Math.max(...this._hElements.map((el) => el.scrollWidth));
 
