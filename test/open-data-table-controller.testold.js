@@ -375,8 +375,9 @@ describe('open-data-table-controller', () => {
 
         await nextFrame();
 
-        expect(() => el.fixedColumnsLeft = []).to.throw('fixedColumnsLeft is read only');
-        expect(() => el.fixedColumnsRight = []).to.throw('fixedColumnsRight is read only');
-        expect(() => el.scrollColumns = []).to.throw('scrollColumns is read only');
+        expect(() => el.displayColumns = []).to.throw('displayColumns is read only');
+        expect(() => el.headerDepth = []).to.throw('headerDepth is read only');
+        expect(() => el.hasDetailTemplate = []).to.throw('hasDetailTemplate is read only');
+
     });
 });

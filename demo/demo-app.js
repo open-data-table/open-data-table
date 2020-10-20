@@ -36,7 +36,8 @@ export class DemoApp extends LitElement {
             }
 
             open-data-table {
-      
+               /*height: 461px;*/
+               /*width: 900px;*/
             }
         `];
     }
@@ -75,7 +76,18 @@ export class DemoApp extends LitElement {
         `;
     }
 
-    detailRenderer(row) {
+    detailSectionRenderer(row) {
+        //const height = 40 + (row.id * 10);
+        const width = 200;
+        return html`
+            <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; width: ${width}px; padding: 8px; box-sizing: border-box; background: white;">
+                <div>DETAIL SECTION</div>
+                <div>${row.dessert}</div>
+            </div>
+        `;
+    }
+
+    detailRowRenderer(row) {
         //const height = 40 + (row.id * 10);
         const height = 40;
         return html`
@@ -83,7 +95,7 @@ export class DemoApp extends LitElement {
         `;
     }
 
-    detailRenderer2(row) {
+    detailRowRenderer2(row) {
         const div = document.createElement('div');
         div.style.width = '100%';
         div.style.padding = '0 20px';
@@ -91,7 +103,7 @@ export class DemoApp extends LitElement {
         return div;
     }
 
-    detailRenderer3(row) {
+    detailRowRenderer3(row) {
         return html`
             <div style="background: lightyellow;">
                 <div style="font-weight: 500; margin: 4px; padding: 0 8px; background: cornflowerblue; color: white;">Annual Sales</div>
@@ -126,7 +138,25 @@ export class DemoApp extends LitElement {
             }
         }
 
-        /*
+        this.enumVisualizer = {
+            name: 'enum',
+            
+            params: {
+                headerAlign: 'center',
+                valueAlign: 'center',
+                lookups: ['small', 'medium', 'large', 'extra large'],
+                baseStyle: { margin: '6px 0', 'border-radius': '3px', 'font-size': '12px' },
+                styles: [
+                    //null, 
+                    { color: 'white', background: '#E53935' },
+                    { color: 'white', background: '#757575' }, 
+                    { color: 'white', background: '#43A047' },
+                    { color: 'white', background: '#1E88E5' }
+                ]
+            }
+        }
+
+        
         this.columns = [
             {
                 label: 'All of the Columns', fix: 'none', columns: [
@@ -150,6 +180,7 @@ export class DemoApp extends LitElement {
                             {
                                 label: 'Sales Information', fix: 'none', columns: [
                                     { label: 'Profit (%)', field: 'profit', type: 'number', formatter: this.percentageFormatter, actionLabel: '', sortable: true, visualizer: this.percentageVisualizer },
+                                    { name: 'size', label: 'Size', field: 'size', type: 'number', sortable: true, visualizer: this.enumVisualizer },
                                     { label: 'In Stock', field: 'available', type: 'boolean', actionLabel: '', sortable: true, visualizer: this.booleanVisualizer }
                                 ]
                             }]
@@ -162,8 +193,8 @@ export class DemoApp extends LitElement {
                 ]
             }
         ];
-        */
         
+
         /*
         this.columns = [
             {
@@ -254,35 +285,63 @@ export class DemoApp extends LitElement {
         ];
         */
 
-        
+        /*
         this.columns = [
-            { name: 'dessert',  label: 'Dessert (100g serving)', field: 'dessert',   type: 'text',    actionLabel: '', sortable: true, fix: 'left', width: 'auto' },
-            { name: 'price',    label: 'Price',                  field: 'price',     type: 'number',  formatter: this.currencyFormatter,  actionLabel: '', sortable: true, width: 'auto' },
-            { name: 'calories', label: 'Calories',               field: 'calories',  type: 'number',  actionLabel: '', sortable: true, renderer: this.customRenderer  },
-            { name: 'fat',      label: 'Fat (g)',                field: 'fat',       type: 'number',  actionLabel: '', sortable: true  },
-            { name: 'carbs',    label: 'Carbs (g)',              field: 'carbs',     type: 'number',  actionLabel: '', sortable: true  },
-            { name: 'protein',  label: 'Protein (g)',            field: 'protein',   type: 'number',  actionLabel: '', sortable: true  },
-            { name: 'sodium',   label: 'Sodium (mg)',            field: 'sodium',    type: 'number',  actionLabel: '', sortable: true, width: 'auto'  },
-            { name: 'calcium',  label: 'Calcium (%)',            field: 'calcium',   type: 'number',  formatter: this.percentageFormatter,  actionLabel: '', sortable: true  },
-            { name: 'iron',     label: 'Iron (%)',               field: 'iron',      type: 'number',  formatter: this.percentageFormatter,  actionLabel: '', sortable: true  },
-            { name: 'profit',   label: 'Profit (%)',             field: 'profit',    type: 'number',  formatter: this.percentageFormatter,  actionLabel: '', sortable: true, visualizer: this.percentageVisualizer, width: 'auto'  },
-            { name: 'stock',    label: 'In Stock',               field: 'available', type: 'boolean', actionLabel: '', sortable: true, visualizer: this.booleanVisualizer },
-            { name: 'add',      label: 'Add to Cart',            field: '',          type: 'action',  actionLabel: 'Add', sortable: false, fix: 'right' }
+            { name: 'dessert', label: 'Dessert (100g serving)', field: 'dessert', type: 'text', actionLabel: '', sortable: true, fix: 'left', width: 'auto' },
+            { name: 'price', label: 'Price', field: 'price', type: 'number', formatter: this.currencyFormatter, actionLabel: '', sortable: true, width: 'auto' },
+            { name: 'calories', label: 'Calories', field: 'calories', type: 'number', actionLabel: '', sortable: true, renderer: this.customRenderer, minWidth: 88, maxWidth: 200 },
+            { name: 'fat', label: 'Fat (g)', field: 'fat', type: 'number', actionLabel: '', sortable: true },
+            { name: 'carbs', label: 'Carbs (g)', field: 'carbs', type: 'number', actionLabel: '', sortable: true },
+            { name: 'protein', label: 'Protein (g)', field: 'protein', type: 'number', actionLabel: '', sortable: true },
+            { name: 'sodium', label: 'Sodium (mg)', field: 'sodium', type: 'number', actionLabel: '', sortable: true, width: 'auto' },
+            { name: 'calcium', label: 'Calcium (%)', field: 'calcium', type: 'number', formatter: this.percentageFormatter, actionLabel: '', sortable: true },
+            { name: 'iron', label: 'Iron (%)', field: 'iron', type: 'number', formatter: this.percentageFormatter, actionLabel: '', sortable: true },
+            { name: 'profit', label: 'Profit (%)', field: 'profit', type: 'number', formatter: this.percentageFormatter, actionLabel: '', sortable: true, visualizer: this.percentageVisualizer, width: 'auto' },
+            { name: 'size', label: 'Size', field: 'size', type: 'number', sortable: true, visualizer: this.enumVisualizer },
+            { name: 'stock', label: 'In Stock', field: 'available', type: 'boolean', actionLabel: '', sortable: true, visualizer: this.booleanVisualizer },
+            { name: 'add', label: 'Add to Cart', field: '', type: 'action', actionLabel: 'Add', sortable: false, fix: 'right' }
         ];
-        
-        
-        this.rows = [
-            { id: 0, dessert: 'Frozen Yoghurt', price: 4.50, calories: 159, fat: 6.0, carbs: 24, protein: 4.0, sodium: 87, calcium: 14, iron: 1, available: true, profit: '8' },
-            { id: 1, dessert: 'Ice Cream Sandwich', price: 3.99, calories: 237, fat: 9.0, carbs: 37, protein: 4.3, sodium: 129, calcium: 8, iron: 1, available: true, profit: '33' },
-            { id: 2, dessert: 'Eclair', price: 2.99, calories: 262, fat: 16.0, carbs: 24, protein: 6.0, sodium: 337, calcium: 6, iron: 7, available: false, profit: '12' },
-            { id: 3, dessert: 'Cupcake', price: 2.50, calories: 305, fat: 3.7, carbs: 67, protein: 4.3, sodium: 413, calcium: 3, iron: 8, available: true, profit: '10' },
-            { id: 4, dessert: 'Gingerbread', price: 1.75, calories: 356, fat: 16.0, carbs: 49, protein: 3.9, sodium: 327, calcium: 7, iron: 16, available: true, profit: '25' },
-            { id: 5, dessert: 'Jelly Bean', price: 0.35, calories: 375, fat: 0.0, carbs: 94, protein: 0.0, sodium: 50, calcium: 0, iron: 0, available: true, profit: '48' },
-            { id: 6, dessert: 'Lollipop', price: 0.50, calories: 392, fat: 0.2, carbs: 98, protein: 0.0, sodium: 38, calcium: 0, iron: 2, available: false, profit: '72' },
-            { id: 7, dessert: 'Honeycomb', price: 1.45, calories: 408, fat: 3.2, carbs: 87, protein: 6.5, sodium: 562, calcium: 0, iron: 45, available: false, profit: '19' },
-            { id: 8, dessert: 'Donut', price: 0.99, calories: 452, fat: 25.0, carbs: 51, protein: 4.9, sodium: 326, calcium: 2, iron: 22, available: true, profit: '50' },
-            { id: 9, dessert: 'KitKat', price: 0.99, calories: 518, fat: 26.0, carbs: 65, protein: 7.0, sodium: 54, calcium: 12, iron: 6, available: true, profit: '81' }
+        */
+
+        this.rowSet = [
+            { id: 0, dessert: 'Frozen Yoghurt', price: 4.50, calories: 159, fat: 6.0, carbs: 24, protein: 4.0, sodium: 87, calcium: 14, iron: 1, available: true, profit: 8, size: 0 },
+            { id: 1, dessert: 'Ice Cream Sandwich', price: 3.99, calories: 237, fat: 9.0, carbs: 37, protein: 4.3, sodium: 129, calcium: 8, iron: 1, available: true, profit: 33, size: 3 },
+            { id: 2, dessert: 'Eclair', price: 2.99, calories: 262, fat: 16.0, carbs: 24, protein: 6.0, sodium: 337, calcium: 6, iron: 7, available: false, profit: 12, size: 0 },
+            { id: 3, dessert: 'Cupcake', price: 2.50, calories: 305, fat: 3.7, carbs: 67, protein: 4.3, sodium: 413, calcium: 3, iron: 8, available: true, profit: 10, size: 0 },
+            { id: 4, dessert: 'Gingerbread', price: 1.75, calories: 356, fat: 16.0, carbs: 49, protein: 3.9, sodium: 327, calcium: 7, iron: 16, available: true, profit: 25, size: 1 },
+            { id: 5, dessert: 'Jelly Bean', price: 0.35, calories: 375, fat: 0.0, carbs: 94, protein: 0.0, sodium: 50, calcium: 0, iron: 0, available: true, profit: 48, size: 2 },
+            { id: 6, dessert: 'Lollipop', price: 0.50, calories: 392, fat: 0.2, carbs: 98, protein: 0.0, sodium: 38, calcium: 0, iron: 2, available: false, profit: 72, size: 0 },
+            { id: 7, dessert: 'Honeycomb', price: 1.45, calories: 408, fat: 3.2, carbs: 87, protein: 6.5, sodium: 562, calcium: 0, iron: 45, available: false, profit: 19, size: 3 },
+            { id: 8, dessert: 'Donut', price: 0.99, calories: 452, fat: 25.0, carbs: 51, protein: 4.9, sodium: 326, calcium: 2, iron: 22, available: true, profit: 50, size: 1 },
+            { id: 9, dessert: 'KitKat', price: 0.99, calories: 518, fat: 26.0, carbs: 65, protein: 7.0, sodium: 54, calcium: 12, iron: 6, available: true, profit: 81, size: 2 }
         ];
+
+        /*
+        var t0 = performance.now()
+
+        doSomething()   // <---- The function you're measuring time for 
+        
+        var t1 = performance.now()
+        console.log("Call to doSomething took " + (t1 - t0) + " milliseconds.");
+        */
+        const rowsJson = JSON.stringify(this.rowSet);
+
+        let t0 = performance.now();
+
+        let tempRows = [];
+
+        for (let i = 0; i < 1; i++) {
+            tempRows.push(...JSON.parse(rowsJson));
+        }
+
+        tempRows.forEach((row, index) => {
+            row.id = index;
+        });
+
+        this.rows = tempRows;
+
+        let t1 = performance.now();
+        console.log(`Data load took ${t1 - t0} milliseconds.`);
 
         this.salesColumns = [
             { label: 'Store', field: 'store', type: 'text', fix: 'none' },
@@ -334,7 +393,10 @@ export class DemoApp extends LitElement {
         return html`
             <div class="container">
                 <div class="table-container">
-                    <open-data-table column-sizing="resizable" .detailTemplate="${this.detailRenderer.bind(this)}" @open-data-table-action="${this._onAction}" .columns="${this.columns}" .rows="${this.rows}" id-field="id" selection-mode="multiple" sort-index="0"></open-data-table>
+                    <open-data-table column-sizing="resizable" .detailRowTemplate="${this.detailRowRenderer.bind(this)}" .detailSectionTemplate="${this.detailSectionRenderer}"
+                     @open-data-table-action="${this._onAction}" .columns="${this.columns}" .rows="${this.rows}" id-field="id" selection-mode="multiple" sort-index="0"
+                     show-active-row>
+                     </open-data-table>
                 </div>
             </div>
         `;

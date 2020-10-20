@@ -105,6 +105,10 @@ export class OpenDataTableBodyCell extends LitElement {
                     return html`<open-data-table-percentage-visualizer class="visualizer" .value="${this.value}" .params="${this.column.visualizer.params}"></open-data-table-percentage-visualizer>`;
                 }
 
+                case 'enum': {
+                    return html`<open-data-table-enum-visualizer class="visualizer" .value="${this.value}" .params="${this.column.visualizer.params}"></open-data-table-enum-visualizer>`;
+                }
+
                 default: {
                     return html`<open-data-table-default-visualizer class="visualizer" .column="${this.column}" .row="${this.row}" .value="${this.value}" .params="${this.column.visualizer.params}"></open-data-table-default-visualizer>`;
                 }

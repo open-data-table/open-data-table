@@ -66,6 +66,12 @@ export class OpenDataTableLayout extends LitElement {
                 --open-data-table-layout-border-color: rgba(0, 0, 0, 0.20);
                 --open-data-table-layout-border-style: solid;
 
+                --open-data-table-layout-detail-color: inherit;
+                --open-data-table-layout-detail-background-color: inherit;
+                --open-data-table-layout-detail-border-color: var(--open-data-table-layout-border-color);
+                --open-data-table-layout-detail-border-style: var(--open-data-table-layout-border-style);
+                --open-data-table-layout-detail-border-width: 0;
+
                 --open-data-table-layout-grouper-color: inherit;
                 --open-data-table-layout-grouper-background-color: inherit;
                 --open-data-table-layout-grouper-border-color: var(--open-data-table-layout-border-color);
@@ -187,13 +193,13 @@ export class OpenDataTableLayout extends LitElement {
                 background: var(--open-data-table-layout-background-color);
                 display: grid;
                 
-                grid-template-columns: auto auto 1fr auto auto; 
-                grid-template-rows:    auto auto 1fr auto auto;
-                grid-template-areas: "grouper              grouper             grouper         grouper              grouper"
-                                     "header-action-left   header-fixed-left   header-scroll   header-fixed-right   header-action-right"
-                                     "body-action-left     body-fixed-left     body-scroll     body-fixed-right     body-action-right"
-                                     "footer-action-left   footer-fixed-left   footer-scroll   footer-fixed-right   footer-action-right"
-                                     "pager                pager               pager           pager                pager"
+                grid-template-columns: auto auto 1fr auto auto auto; 
+                grid-template-rows:    auto auto 1fr auto auto auto;
+                grid-template-areas: "grouper              grouper             grouper         grouper              grouper               grouper"
+                                     "header-action-left   header-fixed-left   header-scroll   header-fixed-right   header-action-right   detail"
+                                     "body-action-left     body-fixed-left     body-scroll     body-fixed-right     body-action-right     detail"
+                                     "footer-action-left   footer-fixed-left   footer-scroll   footer-fixed-right   footer-action-right   detail"
+                                     "pager                pager               pager           pager                pager                 pager"
             }
 
             .grid-part {
@@ -202,6 +208,15 @@ export class OpenDataTableLayout extends LitElement {
                 overflow: hidden;
                 box-sizing: border-box;
                 outline: 0;
+            }
+
+            .detail {
+                grid-area: detail;
+                color: var(--open-data-table-layout-detail-color);
+                background: var(--open-data-table-layout-detail-background-color);
+                border-color: var(--open-data-table-layout-detail-border-color);
+                border-style: var(--open-data-table-layout-detail-border-style);
+                border-width: var(--open-data-table-layout-detail-border-width);
             }
 
             .grouper {
@@ -406,6 +421,8 @@ export class OpenDataTableLayout extends LitElement {
     render() {
         return html`
             <div class="container">
+                <div tabindex="0" class="grid-part detail" no-scroll><slot name="detail"></slot></div>
+
                 <div tabindex="0" class="grid-part grouper" no-scroll><slot name="grouper"></slot></div>
                 
                 <div tabindex="0" class="grid-part header-action-left" no-scroll><slot name="header-action-left"></slot></div>
@@ -432,7 +449,7 @@ export class OpenDataTableLayout extends LitElement {
     }
 
     updateLayout() {
-        this._resetVerticalScrollElements();
+        this._resetScrollElements();
         this._positionScrollAreas();
     }
 
@@ -452,11 +469,23 @@ export class OpenDataTableLayout extends LitElement {
     }
 
     _hScrollHandler(e) {
-        this._hSync(e.target);
+        const el = e.target;
+
+        if (!el.classList.contains('hidden-scrollbar')) {
+            this.fireMessage('open-data-table-horizontal-scroll', { position: el.scrollLeft, clientWidth: el.clientWidth, scrollWidth: el.scrollWidth })
+        }
+
+        this._hSync(el);
     }
 
     _vScrollHandler(e) {
-        this._vSync(e.target);
+        const el = e.target;
+
+        if (!el.classList.contains('hidden-scrollbar')) {
+            this.fireMessage('open-data-table-vertical-scroll', { position: el.scrollTop, clientHeight: el.clientHeight, scrollHeight: el.scrollHeight })
+        }
+        
+        this._vSync(el);
     }
 
     _hSync(src) {
@@ -490,10 +519,20 @@ export class OpenDataTableLayout extends LitElement {
         return style.scrollbarWidth; // This basically identifies Firefox.
     }
 
-    _resetVerticalScrollElements() {
-        this._vElements = [...this.renderRoot.querySelectorAll('div[v-scroll]')];
+    _resetScrollElements() {
+        const vElements = [...this.renderRoot.querySelectorAll('div[v-scroll]')];
 
-        this._vElements.forEach((el, index) => {
+        vElements.forEach((el, index) => {
+            let div = el.querySelector('div.scroll-spacer');
+
+            if (div) {
+                el.removeChild(div);
+            }
+        });
+
+        const hElements = [...this.renderRoot.querySelectorAll('div[h-scroll]')];
+
+        hElements.forEach((el, index) => {
             let div = el.querySelector('div.scroll-spacer');
 
             if (div) {
@@ -532,9 +571,10 @@ export class OpenDataTableLayout extends LitElement {
         });
 
         // Horizontal scrollbar on bottom xxx-scroll.
-        this._hElements = [...this.renderRoot.querySelectorAll('div[h-scroll]')].filter((el) => !el.classList.contains('empty'));
+        //this._hElements = [...this.renderRoot.querySelectorAll('div[h-scroll]')].filter((el) => !el.classList.contains('empty'));
+        this._hElements = [...this.renderRoot.querySelectorAll('div[h-scroll]')];
         const lastHIndex = this._hElements.length - 1;
-        const maxWidth = Math.max(...this._hElements.map((el) => el.scrollWidth));
+        const maxWidth = Math.max(...this._hElements.filter((el) => !el.classList.contains('empty')).map((el) => el.scrollWidth));
 
         this._hElements.forEach((el, index) => {
             el.style.overflowX = 'auto';

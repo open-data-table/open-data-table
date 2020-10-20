@@ -6,8 +6,9 @@ import { html, css, LitElement } from 'lit-element';
 import { repeat } from 'lit-html/directives/repeat.js';
 import { styleMap } from 'lit-html/directives/style-map';
 import { OpenDataTableController } from './open-data-table-controller.js';
+import { ExcelExporter } from './exporters/ExcelExporter.js';
+import { CsvExporter } from './exporters/CsvExporter.js';
 import './open-data-table-layout.js';
-
 import './open-data-table-header-cell.js';
 import './open-data-table-body-cell.js';
 import './open-data-table-selector-cell.js';
@@ -24,6 +25,7 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
                 --open-data-table-background-color: #FFFFFF;
                 --open-data-table-hover-background-color: #F1F1F1;
                 --open-data-table-fixed-background-color: #F1F1F1;
+                --open-data-table-selected-background-color: #F1F1F1;
                 --open-data-table-action-color: #5c6bc0;
                 --open-data-table-disabled-action-color: rgba(0, 0, 0, 0.38);
                 --open-data-table-true-color: rgba(0, 0, 0, 0.87);
@@ -42,7 +44,8 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
             }
 
             open-data-table-layout {
-    
+                --open-data-table-layout-detail-border-width: 0 0 0 1px;
+                
                 --open-data-table-layout-header-action-left-border-width: 0 1px 1px 0;
                 --open-data-table-layout-header-fixed-left-border-width: 0 1px 1px 0;
                 --open-data-table-layout-header-scroll-border-width: 0 0 1px 0;
@@ -190,8 +193,30 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
                 opacity: 0;
             }
 
+            tr[selected-row] {
+                background: var(--open-data-table-selected-background-color);
+            }
+
+            .detail-section {
+                height: 100%;
+                box-sizing: border-box;
+
+                color: var(--open-data-table-layout-detail-color);
+                background: var(--open-data-table-layout-detail-background-color);
+                border-top: var(--open-data-table-layout-detail-border-color);
+                border-style: var(--open-data-table-layout-detail-border-style);
+                border-width: var(--open-data-table-layout-detail-border-width);
+                border-color: var(--open-data-table-layout-detail-border-color);
+            }
+
             .resizer:hover, .resizer[dragging] {
                 opacity: 1;
+            }
+
+            .virtual-row-top, .virtual-row-bottom {
+                /*
+                height: 100px;
+                */
             }
         `];
     }
@@ -203,17 +228,23 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
 
     render() {
         return html`
-            <open-data-table-layout id="layout" class="typography-body" @open-data-table-column-resize="${this._columnResize}" @open-data-table-row-toggle="${this._rowToggle}" @open-data-table-row-selected="${this._rowCheck}" @open-data-table-layout-size-changed="${() => requestAnimationFrame(() => this._resizeHeaderCells())}">
+            <open-data-table-layout id="layout" class="typography-body" @open-data-table-vertical-scroll="${this._tableVerticalScroll}" @open-data-table-column-resize="${this._columnResize}" @open-data-table-row-toggle="${this._rowToggle}" @open-data-table-row-selected="${this._rowCheck}" @open-data-table-layout-size-changed="${() => requestAnimationFrame(() => this._resizeHeaderCells())}">
                 ${this._renderLeftActions()}
 
                 ${this.displayColumns.fixedLeft.length > 0 ? html`
                     <div class="header-fixed-left" slot="header-fixed-left">
-                        ${this._renderDataHeader(true, 'header-fixed-left-row', this.displayColumns.fixedLeft)}
+                        <table>
+                            ${this._renderDataHeader(true, 'header-fixed-left-row', this.displayColumns.fixedLeft)}
+                        </table>
                     </div>
 
                     <div class="body-fixed-left" slot="body-fixed-left">
-                        ${this._renderDataHeader(false, 'header-fixed-left-row', this.displayColumns.fixedLeft)}
-                        ${this._renderDataBody('body-fixed-left-row', this.displayColumns.fixedLeft, true)}
+                        <div class="virtual-row-top"></div>
+                        <table @click="${this._onRowClick}">
+                            ${this._renderDataHeader(false, 'header-fixed-left-row', this.displayColumns.fixedLeft)}
+                            ${this._renderDataBody('body-fixed-left-row', this.displayColumns.fixedLeft, true)}
+                        </table>
+                        <div class="virtual-row-bottom"></div>
                     </div>
                 ` : null}
 
@@ -225,25 +256,34 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
                     </div>
 
                     <div class="body-scroll" slot="body-scroll">
-                        <table>
+                        <div class="virtual-row-top"></div>
+                        <table @click="${this._onRowClick}" id="mainTable">
                             ${this._renderDataHeader(false, 'header-scroll-row', this.displayColumns.scroll)}
                             ${this._renderDataBody('body-scroll-row', this.displayColumns.scroll, false)}
                         </table>
+                        <div class="virtual-row-bottom"></div>
                     </div>
                 ` : null}
 
                 ${this.displayColumns.fixedRight.length > 0 ? html`
                     <div class="header-fixed-right" slot="header-fixed-right">
-                        ${this._renderDataHeader(true, 'header-fixed-right-row', this.displayColumns.fixedRight)}
+                        <table>
+                            ${this._renderDataHeader(true, 'header-fixed-right-row', this.displayColumns.fixedRight)}
+                        </table>
                     </div>
 
                     <div class="body-fixed-right" slot="body-fixed-right">
-                        ${this._renderDataHeader(false, 'header-fixed-right-row', this.displayColumns.fixedRight)}
-                        ${this._renderDataBody('body-fixed-right-row', this.displayColumns.fixedRight, true)}
+                        <div class="virtual-row-top"></div>
+                        <table @click="${this._onRowClick}">
+                            ${this._renderDataHeader(false, 'header-fixed-right-row', this.displayColumns.fixedRight)}
+                            ${this._renderDataBody('body-fixed-right-row', this.displayColumns.fixedRight, true)}
+                        </table>
+                        <div class="virtual-row-bottom"></div>
                     </div>
                 ` : null}
 
                 ${this._renderRightActions()}
+                ${this._renderDetailSection(this.activeRow)}
             </open-data-table-layout>
         `;
     }
@@ -254,14 +294,13 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
     }
 
     _columnResize(e) {
-        console.log(e.detail);
         e.detail.column.width = e.detail.width;
         this.requestUpdate('columns', []);
         requestAnimationFrame(() => this._resizeHeaderCells());
     }
 
     _resizeDetailRow(row) {
-        const rowIndex = this.sortedRows.indexOf(row);
+        const rowIndex = this.displayRows.indexOf(row);
         const detailCells = [...this.renderRoot.querySelectorAll(`.detail-cell[row-index="${rowIndex}"`)];
 
         if (detailCells.length > 0) {
@@ -277,14 +316,22 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
     }
 
     _renderDetailRow(row, rowIndex, count, showContent) {
-        if (this.hasDetailTemplate && this.rowExpanded(row)) {
+        if (this.hasDetailRowTemplate && this.rowExpanded(row)) {
             if (showContent) {
-                return html`<tr class="detail-row"><td row-index="${rowIndex}" class="detail-cell" ?has-content="${showContent}" colspan="${count}">${this.detailTemplate(row)}</td></tr>`;
+                return html`<tr class="detail-row"><td row-index="${rowIndex}" class="detail-cell" ?has-content="${showContent}" colspan="${count}">${this.detailRowTemplate(row)}</td></tr>`;
             } else {
                 return html`<tr class="detail-row"><td row-index="${rowIndex}" class="detail-cell" ?has-content="${showContent}" colspan="${count}"></td></tr>`;
             }
 
         }
+    }
+
+    _renderDetailSection(row) {
+        if (this.hasDetailSectionTemplate && row) {
+            return html`<div class="detail-section" slot="detail">${this.detailSectionTemplate(row)}</div>`;
+        }
+
+        return null;
     }
 
     _renderRightActions() {
@@ -300,9 +347,11 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
                 </div>  
 
                 <div slot="body-action-right">
+                    <div class="virtual-row-top"></div>
                     <table class="table-action-right">
                         ${this._renderActionRightBody(hasRowActions)}
                     </table>
+                    <div class="virtual-row-bottom"></div>
                 </div>
             `;
         }
@@ -326,7 +375,7 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
     _renderActionRightBody(show) {
         return html`
             <tbody>
-                ${repeat(this.sortedRows, (row) => row[this.idField], (row, rowIndex) => html`
+                ${repeat(this.displayRows, (row) => row[this.idField], (row, rowIndex) => html`
                     <tr>
                         ${show ? html`
                             <td><open-data-table-action-cell .row="${row}" .actions="${this.rowActions}"></open-data-table-action-cell></td>
@@ -339,7 +388,7 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
     }
 
     _renderLeftActions() {
-        if ((this.selectionMode === 'single') || (this.selectionMode === 'multiple') || (this.hasDetailTemplate)) {
+        if ((this.selectionMode === 'single') || (this.selectionMode === 'multiple') || (this.hasDetailRowTemplate)) {
             return html`
                 <div ?align-bottom-spacer="${(this.headerDepth > 1) && (this.selectionMode === 'multiple')}" slot="header-action-left">
                     ${this.selectionMode === 'multiple' ? html`
@@ -351,9 +400,11 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
                 </div>  
 
                 <div slot="body-action-left">
+                    <div class="virtual-row-top"></div>
                     <table>
                         ${this._renderActionLeftBody()}
                     </table>
+                    <div class="virtual-row-bottom"></div>
                 </div>
             `;
         }
@@ -376,18 +427,17 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
     _renderActionLeftBody() {
         return html`
             <tbody>
-                ${repeat(this.sortedRows, (row) => row[this.idField], (row, rowIndex) => html`
+                ${repeat(this.displayRows, (row) => row[this.idField], (row, rowIndex) => html`
                     <tr>
                         ${(this.selectionMode === 'single' || this.selectionMode === 'multiple') ? html`
                                 <td><open-data-table-selector-cell row-index="${rowIndex}" ?selected="${this.effectiveSelectedRows.indexOf(row) > -1}"></open-data-table-selector-cell></td>
                             ` : null
             }
 
-                        ${this.hasDetailTemplate ? html`
+                        ${this.hasDetailRowTemplate ? html`
                             <td><open-data-table-expander-cell .row="${row}" ?expanded="${this.rowExpanded(row)}"></open-data-table-expander-cell></td>
                             ` : null
             }
-                        
                     </tr>
                     ${this._renderDetailRow(row, rowIndex, 2, false)}
                 `)}
@@ -404,11 +454,11 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
                 ${(visible && (columns.length > 1)) ? this._renderGroupHeaders(columns) : null}
                 <tr class="${rowClass}" ?collapsed="${!visible}">
                     ${columns[this.headerDepth - 1].map((column, index) => {
-                        const styles = styleMap({
-                            width: (canHaveSize && column.width) ? column.width : null
-                        });
+            const styles = styleMap({
+                width: (canHaveSize && column.width) ? column.width : null
+            });
 
-                        return html`
+            return html`
                             <th ?last-in-group="${column._lastInGroup}" .columnIndex="${column._internalIndex}">
                                 ${resizable ? html`
                                     <div class="resizer" @mousedown="${this._handleColumnResizeStart}" @touchstart="${this._handleColumnResizeStart}"></div>
@@ -420,7 +470,7 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
                                 </open-data-table-header-cell>
                             </th>
                         `
-                    })}
+        })}
                 </tr>
             </thead>
         `;
@@ -435,25 +485,26 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
 
             return html`<tr>
                 ${columns.map((column, index) => {
-                    const rightBorder = (index !== columnCount) && ((columns[index + 1].label) || (column.label));
-                    
-                    return html`
+                const rightBorder = (index !== columnCount) && ((columns[index + 1].label) || (column.label));
+
+                return html`
                         <th class="group-column" ?bottom-border="${column.label || lastGroup}" ?right-border="${rightBorder}" colspan="${column.childCount}">
                             <open-data-table-group-header-cell label="${column.label}"></open-data-table-group-header-cell>
                         </th>
                     `;
-                })}
+            })}
             </tr>`;
         });
     }
 
     _renderDataBody(rowClass, columns, fixed) {
         const columnCount = columns[this.headerDepth - 1].length;
+        const showActive = !fixed && this.showActiveRow;
 
         return html`
             <tbody>
-                ${repeat(this.sortedRows, (row) => row[this.idField], (row, rowIndex) => html`
-                    <tr .row="${row}" class="${rowClass}">${columns[this.headerDepth - 1].map((column, index) => this._renderBodyCell(column, row))}</tr>
+                ${repeat(this.displayRows, (row) => row[this.idField], (row, rowIndex) => html`
+                    <tr ?selected-row="${showActive && row === this.activeRow}" .row="${row}" class="${rowClass}">${columns[this.headerDepth - 1].map((column) => this._renderBodyCell(column, row))}</tr>
                     ${this._renderDetailRow(row, rowIndex, columnCount, !fixed)}
                 `)}
             </tbody>
@@ -500,6 +551,18 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
         this.sortColumn(e.target.columnIndex);
     }
 
+    _onRowClick(e) {
+        const row = e.target.row;
+
+        if (row) {
+            if (this.activeRow !== row) {
+                const oldValue = this.activeRow;
+                this._activeRow = row;
+                this.requestUpdate('activeRow', oldValue);
+            }
+        }
+    }
+
     _rowCheck(e) {
         e.preventDefault();
 
@@ -518,6 +581,60 @@ export class OpenDataTable extends OpenDataTableController(LitElement) {
         }
 
         this.requestUpdate();
+    }
+
+    _tableVerticalScroll(e) {
+        this.verticalScrollInfo = e.detail;
+        console.log(e.detail);
+        // Set the sizes of the virtual rows.
+        // TODO
+
+        // Update the display rows.
+        //this._setDisplayRows();
+    }
+
+    exportToExcel(fileName = 'data.xlsx') {
+        const data = this._buildExportData();
+
+        const exporter = new ExcelExporter();
+        exporter.export(fileName, data.columns, data.rows);
+    }
+
+    exportToCsv(fileName = 'data.csv') {
+        const data = this._buildExportData();
+
+        const exporter = new CsvExporter();
+        exporter.export(fileName, data.columns, data.rows, ';');
+    }
+
+    _buildExportData() {
+        let columns = [];
+        let rows = [];
+
+        // Columns.
+        if (this.displayColumns.fixedLeft.length > 0) {
+            columns.push(...this.displayColumns.fixedLeft[this.displayColumns.fixedLeft.length - 1])
+        }
+
+        if (this.displayColumns.scroll.length > 0) {
+            columns.push(...this.displayColumns.scroll[this.displayColumns.scroll.length - 1])
+        }
+
+        if (this.displayColumns.fixedRight.length > 0) {
+            columns.push(...this.displayColumns.fixedRight[this.displayColumns.fixedRight.length - 1])
+        }
+
+        columns = columns.filter((column) => column.field);
+
+        // Rows.
+        this.sortedRows.forEach((row) => {
+            rows.push(columns.map((column) => row[column.field]));
+        });
+
+        return {
+            columns: columns,
+            rows: rows
+        }
     }
 }
 

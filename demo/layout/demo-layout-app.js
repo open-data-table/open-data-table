@@ -23,11 +23,14 @@ export class DemoLayoutApp extends LitElement {
             open-data-table-layout {
                 outline: 1px solid #E0E0E0;
                 font-size: 13px;
-                width: 1000px;
+                width: 1200px;
                 height: 600px;
                 box-sizing: border-box;
 
                 /*--open-data-table-layout-background-color: var(--open-block-color, #ECECEC);*/
+
+                --open-data-table-layout-detail-color: black;
+                --open-data-table-layout-detail-background-color: #f8bbd0;
 
                 --open-data-table-layout-grouper-color: white;
                 --open-data-table-layout-grouper-background-color: #5c6bc0;
@@ -111,6 +114,14 @@ export class DemoLayoutApp extends LitElement {
             .large-v {
                 height: 3000px;
             }
+
+            .detail {
+                width: 200px;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
         `];
     }
 
@@ -141,6 +152,8 @@ export class DemoLayoutApp extends LitElement {
                     <div class="footer-action-right part" slot="footer-action-right">footer-action-right</div>
                         
                     <div class="pager part" slot="pager">pager</div>
+
+                    <div class="detail part" slot="detail">detail</div>
                 </open-data-table-layout>
             </div>
         `;

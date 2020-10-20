@@ -17,8 +17,25 @@ export const OpenDataTableController = (superClass) =>
                     type: Array
                 },
 
+                sortedRows: {
+                    type: Array
+                },
+
+                displayRows: {
+                    type: Array
+                },
+
                 selectedRows: {
                     type: Array
+                },
+
+                activeRow: {
+                    type: Object
+                },
+
+                showActiveRow: {
+                    type: Boolean,
+                    attribute: 'show-active-row'
                 },
 
                 expandedRows: {
@@ -64,11 +81,19 @@ export const OpenDataTableController = (superClass) =>
                     attribute: 'row-actions-icon'
                 },
 
-                detailTemplate: {
+                detailRowTemplate: {
                     type: Object
                 },
 
-                hasDetailTemplate: {
+                hasDetailRowTemplate: {
+                    type: Boolean
+                },
+
+                detailSectionTemplate: {
+                    type: Object
+                },
+
+                hasDetailSectionTemplate: {
                     type: Boolean
                 },
 
@@ -92,8 +117,37 @@ export const OpenDataTableController = (superClass) =>
 
                 _columnDragging: {
                     type: Boolean
+                },
+
+                verticalScrollInfo: {
+                    type: Object
                 }
             }
+        }
+
+        get sortedRows() {
+            return this.rows;
+        }
+
+        set sortedRows(value) {
+            throw 'sortedRows is read only';
+        }
+
+
+        get displayRows() {
+            return this._displayRows;
+        }
+
+        set displayRows(value) {
+            throw 'displayRows is read only';
+        }
+
+        get activeRow() {
+            return this._activeRow;
+        }
+
+        set activeRow(value) {
+            throw 'activeRow is read only';
         }
 
         get headerDepth() {
@@ -131,25 +185,47 @@ export const OpenDataTableController = (superClass) =>
             }
         }
 
-        get hasDetailTemplate() {
-            return this._hasDetailTemplate;
+        get hasDetailRowTemplate() {
+            return this._hasDetailRowTemplate;
         }
 
-        set hasDetailTemplate(value) {
-            throw 'hasDetailTemplate is read only';
+        set hasDetailRowTemplate(value) {
+            throw 'hasDetailRowTemplate is read only';
         }
 
-        get detailTemplate() {
-            return this._detailTemplate;
+        get detailRowTemplate() {
+            return this._detailRowTemplate;
         }
 
-        set detailTemplate(value) {
+        set detailRowTemplate(value) {
             if (this._isFunction(value)) {
-                const oldValue = this._detailTemplate;
-                this._detailTemplate = value;
-                this._hasDetailTemplate = true;
-                this.requestUpdate('detailTemplate', oldValue);
-                this.requestUpdate('hasDetailTemplate', null);
+                const oldValue = this._detailRowTemplate;
+                this._detailRowTemplate = value;
+                this._hasDetailRowTemplate = true;
+                this.requestUpdate('detailRowTemplate', oldValue);
+                this.requestUpdate('hasDetailRowTemplate', null);
+            }
+        }
+
+        get hasDetailSectionTemplate() {
+            return this._hasDetailSectionTemplate;
+        }
+
+        set hasDetailSectionTemplate(value) {
+            throw 'hasDetailSectionTemplate is read only';
+        }
+
+        get detailSectionTemplate() {
+            return this._detailSectionTemplate;
+        }
+
+        set detailSectionTemplate(value) {
+            if (this._isFunction(value)) {
+                const oldValue = this._detailSectionTemplate;
+                this._detailSectionTemplate = value;
+                this._hasDetailSectionTemplate = true;
+                this.requestUpdate('detailSectionTemplate', oldValue);
+                this.requestUpdate('hasDetailSectionTemplate', null);
             }
         }
 
@@ -158,8 +234,11 @@ export const OpenDataTableController = (superClass) =>
             this._columns = [];
             this.sortColumns = [];
             this.rows = [];
+            this._sortedRows = [];
+            this._displayRows = [];
             this.selectedRows = [];
             this.expandedRows = [];
+            this._activeRow = null;
             this.selectionMode = 'none';
             this.idField = 'id';
             this.sortIndex = -1;
@@ -168,11 +247,21 @@ export const OpenDataTableController = (superClass) =>
             this.rowActions = [];
             this.columnActionsIcon = '';
             this.rowActionsIcon = '';
-            this._detailTemplate = null;
-            this._hasDetailTemplate = false;
+            this._detailRowTemplate = null;
+            this._hasDetailRowTemplate = false;
+            this._detailSectionTemplate = null;
+            this._hasDetailSectionTemplate = false;
             this._headerDepth = 0;
             this.columnSizing = 'auto';
             this._columnDragging = false;
+            this.verticalScrollInfo = null;
+            this.showActiveRow = false;
+
+            this._displayColumns = {
+                fixedLeft: [],
+                fixedRight: [],
+                scroll: []
+            }
 
             this.columnResizeInfo = {
                 offset: undefined,
@@ -196,6 +285,20 @@ export const OpenDataTableController = (superClass) =>
             this.updateDisplayColumns();
         }
 
+        updated(changedProperties) {
+            super.updated(changedProperties);
+
+            changedProperties.forEach((oldValue, propName) => {
+                if ((propName === 'sortIndex') || (propName === 'sortField') || (propName === 'sortType') || (propName === 'sortDescending')) {
+                    this._sortRows();
+                }
+
+                if ((propName === 'sortedRows') || (propName === 'verticalScrollInfo')) {
+                    this._updateDisplayRows();
+                }
+            });
+        }
+
         _handleColumnResizeStart(e) {
             this.columnResizeInfo.resizer = e.target;
             this.columnResizeInfo.resizerSibling = e.target.nextElementSibling;
@@ -210,22 +313,37 @@ export const OpenDataTableController = (superClass) =>
             this._columnDragging = true;
         }
 
-        _handleColumnResizeStep(e) { 
+        _handleColumnResizeStep(e) {
             if (this.columnResizeInfo.currentGridColumn) {
                 const px = (e.type === 'touchmove') ? e.changedTouches[0].pageX : e.pageX;
                 const dx = px - this.columnResizeInfo.offset;
-   
+
                 this.columnResizeInfo.offset = px;
                 this.columnResizeInfo.currentColumnWidth = (this.columnResizeInfo.currentColumnWidth + dx);
-                this.columnResizeInfo.currentGridColumn.width = Math.max(this.columnResizeInfo.currentColumnWidth, 3) + 'px';
+
+                let newWidth = Math.max(this.columnResizeInfo.currentColumnWidth, 3);
+
+                if ((this.columnResizeInfo.currentGridColumn.minWidth) && (newWidth < this.columnResizeInfo.currentGridColumn.minWidth)) {
+                    newWidth = this.columnResizeInfo.currentGridColumn.minWidth;
+                } else if ((this.columnResizeInfo.currentGridColumn.maxWidth) && (newWidth > this.columnResizeInfo.currentGridColumn.maxWidth)) {
+                    newWidth = this.columnResizeInfo.currentGridColumn.maxWidth;
+                }
+
+                this.columnResizeInfo.currentGridColumn.width = newWidth + 'px';
 
                 this.requestUpdate('columns', []);
+
+                const layoutElement = this.renderRoot.getElementById('layout');
+
+                if (layoutElement) {
+                    requestAnimationFrame(() => layoutElement.updateLayout());
+                }
             }
         }
 
         _handleColumnResizeEnd(e) {
             this._columnDragging = false;
-            
+
             if (this.columnResizeInfo && this.columnResizeInfo.resizer) {
                 this.columnResizeInfo.resizer.removeAttribute('dragging');
                 this.columnResizeInfo.resizerSibling.removeAttribute('dragging');
@@ -239,31 +357,64 @@ export const OpenDataTableController = (superClass) =>
                 resizer: undefined,
                 resizerSibling: undefined
             }
+
+            this.requestUpdate('columns', []);
         }
 
-        get sortedRows() {
+        _updateDisplayRows() {
+            //this._displayRows = this.sortedRows.slice(0, 5);
+            this._displayRows = this.sortedRows;
+            this.requestUpdate('displayRows', []);
+        }
+
+        _sortRows() {
             if (this.sortIndex > -1) {
                 this._sortField = this.sortColumns[this.sortIndex].field;
                 this._sortType = this.sortColumns[this.sortIndex].type;
 
-                switch (this._sortType) {
-                    case 'number': {
-                        this.sortDescending ? this.rows.sort(this.compareNumberDesc.bind(this)) : this.rows.sort(this.compareNumberAsc.bind(this));
-                        break;
+                if (this._sortParamtersChanged(this.sortIndex, this._sortField, this._sortType, this.sortDescending)) {
+                    let t0 = performance.now();
+
+                    switch (this._sortType) {
+                        case 'number': {
+                            this.sortDescending ? this.rows.sort(this.compareNumberDesc.bind(this)) : this.rows.sort(this.compareNumberAsc.bind(this));
+                            break;
+                        }
+
+                        case 'boolean': {
+                            this.sortDescending ? this.rows.sort(this.compareBooleanDesc.bind(this)) : this.rows.sort(this.compareBooleanAsc.bind(this));
+                            break;
+                        }
+
+                        default: {
+                            this.sortDescending ? this.rows.sort(this.compareDesc.bind(this)) : this.rows.sort(this.compareAsc.bind(this));
+                        }
                     }
 
-                    case 'boolean': {
-                        this.sortDescending ? this.rows.sort(this.compareBooleanDesc.bind(this)) : this.rows.sort(this.compareBooleanAsc.bind(this));
-                        break;
+                    this._previousSortParameters = {
+                        index: this.sortIndex,
+                        field: this._sortField,
+                        type: this._sortType,
+                        descending: this.sortDescending
                     }
 
-                    default: {
-                        this.sortDescending ? this.rows.sort(this.compareDesc.bind(this)) : this.rows.sort(this.compareAsc.bind(this));
-                    }
+                    let t1 = performance.now();
+                    console.log(`Data sort took ${t1 - t0} milliseconds. SortIndex: ${this.sortIndex}. SortField: ${this._sortField}. SortType: ${this._sortType}. SortDescending: ${this.sortDescending}`);
                 }
             }
 
+            this.requestUpdate('sortedRows', []);
+
             return this.rows;
+        }
+
+        
+
+        _sortParamtersChanged(index, field, type, descending) {
+            if (!this._previousSortParameters) return true;
+
+            return (index !== this._previousSortParameters.index) || (field !== this._previousSortParameters.field) ||
+                (type !== this._previousSortParameters.type) || (descending !== this._previousSortParameters.descending)
         }
 
         get effectiveSelectedRows() {
@@ -311,6 +462,7 @@ export const OpenDataTableController = (superClass) =>
             flatColumns.forEach((column, index) => column._internalIndex = index);
 
             this.sortColumns = flatColumns;
+
             //console.log(this.sortColumns)
             this.requestUpdate('displayColumns', oldValue);
         }
